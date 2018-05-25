@@ -1,0 +1,151 @@
+
+#loading data
+golfdata <-read.csv(file="UpdatedGolfDataset.csv", header=TRUE, sep=",")
+
+#Summary statistics for seeing frequencies and describing the data
+#histogram with density and normal curve
+mean(golfdata$MembershipYears)
+sd(golfdata$MembershipYears)
+hist(golfdata$MembershipYears)
+hist(golfdata$MembershipYears, 
+     main="Membership Years", 
+     xlab="Years", 
+     border="blue", 
+     col="light blue", 
+     ylim=c(0,0.022),
+     las=1, 
+     breaks=5, 
+prob=TRUE)
+curve(dnorm(x, mean=mean(golfdata$MembershipYears), sd=sd(golfdata$MembershipYears)), add=TRUE, col="purple")
+
+shapiro.test(golfdata$YearlyIncome)
+
+#histogram with frequency
+hist(golfdata$MembershipYears, 
+     main="Histogram for Membership Years", 
+     xlab="Passengers", 
+     border="blue", 
+     col="grey",
+     las=1, 
+     breaks=5)
+curve(dnorm(x, mean=mean(golfdata$MembershipYears), sd=sd(golfdata$MembershipYears)), add=TRUE, col="red")
+
+#histogram for dinner variable
+hist(golfdata$Dinner, 
+     main="Histogram of Dinner", 
+     xlab="Amount spent on dinner in past 6 Months", 
+     border="blue", 
+     col="light blue", 
+     ylim=c(0,0.003),
+     las=1, 
+     breaks=5, 
+     prob=TRUE)
+curve(dnorm(x, mean=mean(golfdata$Dinner), sd=sd(golfdata$Dinner)), add=TRUE, col="purple")
+
+# dinner
+hist(golfdata$Dinner, 
+     main="Histogram of Dinner", 
+     xlab="Total Spent in Past 2 Years", 
+     border="blue",
+     col="light blue",
+     ylim=c(0,50),
+     xlim=c(0,1200))
+
+#histogram of Commute Distance  
+hist(golfdata$CommuteDistance, 
+     main="Commute Distance", 
+     xlab="Miles to Golf Club", 
+     border="blue", 
+     col="light blue",
+     ylim=c(0,0.035),
+     prob=TRUE)
+curve(dnorm(x, mean=mean(golfdata$CommuteDistance), sd=sd(golfdata$CommuteDistance)), add=TRUE, col="purple")
+
+hist(golfdata$CommuteDistance, 
+     main="Histogram of Commute Distance", 
+     xlab="Miles to Golf Club", 
+     border="blue", 
+     col="light blue")
+curve(dnorm(x, mean=mean(golfdata$CommuteDistance), sd=sd(golfdata$CommuteDistance)), add=TRUE, col="purple")
+
+hist(golfdata$YearlyIncome, 
+     main="Yearly Income", 
+     xlab="Dollars", 
+     border="blue", 
+     col="light blue",
+     prob=TRUE)
+curve(dnorm(x, mean=mean(golfdata$YearlyIncome), sd=sd(golfdata$YearlyIncome)), add=TRUE, col="purple")
+
+
+lines(xfit, yfit, col = "black", lwd = 2)
+
+hist(UpdatedGolfDataset$YearlyIncome)
+mean(UpdatedGolfDataset$YearlyIncome)
+hist(UpdatedGolfDataset$Dinner)
+
+library(corrplot)
+golfdata2<- golfdata[c(6,9,10,16,18,22)]
+M <- cor(golfdata2)
+corrplot(M, method = "circle")
+
+occupation <- as.data.frame(table(golfdata$Occupation))
+print(occupation)
+
+#linear model:
+fit <- lm(golfdata$Churn ~  golfdata$MembershipYears + golfdata$YearlyIncome + golfdata$CommuteDistance)
+summary(fit)
+print <- data.frame(golfdata, pred=fit$fitted.values)
+
+#decision tree:
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(RColorBrewer)
+fit3<-rpart(golfdata$Churn~ golfdata$Dinner + golfdata$MembershipYears + golfdata$YearlyIncome + golfdata$CommuteDistance, data=golfdata, method="class")
+print(fit3)
+plot(fit3)
+fancyRpartPlot(fit3)
+
+fit4 <- kmeans(UpdatedGolfDataset, 5)
+aggregate(UpdatedGolfDataset,by=list(fit4$cluster),FUN=mean)
+
+
+#Clusters
+
+#dat23subset <- golfdata[c(6,9,10,16,18,21,22)]
+dat23subset <- golfdata[c(6,10,11,18,21,23)]
+dat23subset<- na.omit(dat23subset)
+
+fit4 <- kmeans(dat23subset, 7)
+aggregate(dat23subset,by=list(fit4$cluster),FUN=mean)
+
+aggregate(dat23subset,by=list(fit4$cluster),FUN=mean)
+
+golfdata2 <- golfdata
+dat23subset <- data.frame(dat23subset, fit4$cluster)
+View(dat23subset)
+
+library(cluster) 
+clusplot(dat23subset, fit4$cluster, color=TRUE, 
+         labels=2, lines=0)
+
+#gradient boosting
+library(ggplot2)
+install.packages('gbm')
+library(gbm)
+golf.boost=gbm(golfdata$Churn ~ .,data = golfdata,distribution = "gaussian",n.trees = 10000,
+                 shrinkage = 0.01, interaction.depth = 4)
+summary(golf.boost)
+
+#roc plot
+mylogit <- glm(Churn ~ golfdata$Dinner + golfdata$MembershipYears + golfdata$YearlyIncome + golfdata$CommuteDistance, data = golfdata, family = "binomial")
+summary(mylogit)
+prob=predict(mylogit,type=c("response"))
+golfdata$prob=prob
+library(pROC)
+g <- roc(Churn ~ prob, data = golfdata)
+plot(g)  
+library(ROCR)
+pred <- prediction(golfdata$prob, "auc")
+performance(pred, "auc")
+
